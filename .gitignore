@@ -1,0 +1,38 @@
+### macOS ###
+.DS_Store
+**/.DS_Store
+
+### Logs ###
+*.log
+logs/
+!**/src/main/**/logs/
+!**/src/test/**/logs/
+
+### Spring Specific ###
+*.h2.db
+*.mv.db
+*.db
+*.sqlite
+.env
+
+### Gradle Specific ###
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ ###
+.idea
+*.iml
+*.iws
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### VSCode ###
+.vscode/
+
+### System ###
+Thumbs.db
