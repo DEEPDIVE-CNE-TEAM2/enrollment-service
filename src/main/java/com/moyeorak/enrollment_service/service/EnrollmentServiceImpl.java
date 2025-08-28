@@ -9,6 +9,7 @@ import com.moyeorak.enrollment_service.dto.EnrollmentResponse;
 import com.moyeorak.enrollment_service.dto.ProgramDto;
 import com.moyeorak.enrollment_service.dto.UserDto;
 import com.moyeorak.enrollment_service.entity.Enrollment;
+import com.moyeorak.enrollment_service.mapper.EnrollmentMapper;
 import com.moyeorak.enrollment_service.repository.EnrollmentRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,14 +29,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     private final EnrollmentRepository enrollmentRepository;
     private final UserClient userClient;
     private final ProgramClient programClient;
+    private final EnrollmentMapper enrollmentMapper;
 
     @Override
     @Transactional
-    public EnrollmentResponse enrollByEmail(String email, EnrollmentRequest request) {
-        log.info("[ENROLL] 수강 신청 요청 - email: {}, programId: {}", email, request.getProgramId());
+    public EnrollmentResponse enroll(Long userId, EnrollmentRequest request) {
+        log.info("[ENROLL] 수강 신청 요청 - userId: {}, programId: {}", userId, request.getProgramId());
 
-        // 사용자, 프로그램 정보 조회 (지금은 Mock)
-        UserDto user = userClient.getUserByEmail(email);
+        // 사용자, 프로그램 정보 조회 (Mock or Feign)
+        UserDto user = userClient.getUserById(userId);
         ProgramDto program = programClient.getProgramById(request.getProgramId());
 
         // 가격 결정
@@ -102,6 +104,14 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollment.cancel("");
 
         enrollmentRepository.save(enrollment);
+    }
+
+
+    @Override
+    public List<EnrollmentResponse> getMyEnrollments(Long userId) {
+        return enrollmentRepository.findByUserId(userId).stream()
+                .map(enrollmentMapper::toResponse)
+                .toList();
     }
 
 }

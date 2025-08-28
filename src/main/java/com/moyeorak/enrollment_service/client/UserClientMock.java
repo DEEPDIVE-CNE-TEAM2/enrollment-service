@@ -8,10 +8,10 @@ import org.springframework.stereotype.Component;
 public class UserClientMock implements UserClient {
 
     @Override
-    public UserDto getUserByEmail(String email) {
+    public UserDto getUserById(Long userId) {
         return UserDto.builder()
-                .id(3L)
-                .email(email)
+                .id(userId)
+                .email("test@example.com")
                 .regionId(2L)
                 .build();
     }

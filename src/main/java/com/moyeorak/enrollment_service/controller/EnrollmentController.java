@@ -23,11 +23,11 @@ public class EnrollmentController {
     // api gateway 완성되면 수정 필요
     @PostMapping
     public ResponseEntity<EnrollmentResponse> enroll(
-            @RequestHeader("X-User-Email") String email,
+            @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody EnrollmentRequest request
     ) {
         return ResponseEntity.ok(
-                enrollmentService.enrollByEmail(email, request)
+                enrollmentService.enroll(userId, request)
         );
     }
 
@@ -38,5 +38,12 @@ public class EnrollmentController {
     ) {
         enrollmentService.cancelEnrollmentByUser(id, userId);
         return ResponseEntity.ok(new MessageResponse("수강 신청이 취소되었습니다."));
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<EnrollmentResponse>> getMyEnrollments(
+            @RequestHeader("X-User-Id") Long userId
+    ) {
+        return ResponseEntity.ok(enrollmentService.getMyEnrollments(userId));
     }
 }

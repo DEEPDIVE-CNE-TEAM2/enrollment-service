@@ -7,6 +7,7 @@ import com.moyeorak.enrollment_service.entity.Enrollment;
 import java.util.List;
 
 public interface EnrollmentService {
-    EnrollmentResponse enrollByEmail(String email, EnrollmentRequest request);
+    EnrollmentResponse enroll(Long userId, EnrollmentRequest request);
     void cancelEnrollmentByUser(Long id, Long userId);
+    List<EnrollmentResponse> getMyEnrollments(Long userId);
 }
