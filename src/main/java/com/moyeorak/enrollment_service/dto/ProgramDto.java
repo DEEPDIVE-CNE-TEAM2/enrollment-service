@@ -2,6 +2,7 @@ package com.moyeorak.enrollment_service.dto;
 // 임시
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Getter
@@ -15,4 +16,6 @@ public class ProgramDto {
     private Integer outPrice;
     private LocalTime classStartTime;
     private LocalTime classEndTime;
+    private String instructorName;
+    private LocalDate cancelEndDate;
 }

@@ -2,6 +2,8 @@ package com.moyeorak.enrollment_service.service;
 
 import com.moyeorak.common.exception.BusinessException;
 import com.moyeorak.common.exception.ErrorCode;
+import com.moyeorak.enrollment_service.client.ProgramClient;
+import com.moyeorak.enrollment_service.client.UserClient;
 import com.moyeorak.enrollment_service.dto.EnrollmentRequest;
 import com.moyeorak.enrollment_service.dto.EnrollmentResponse;
 import com.moyeorak.enrollment_service.dto.ProgramDto;
@@ -14,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -22,15 +25,17 @@ import java.util.Objects;
 public class EnrollmentServiceImpl implements EnrollmentService {
 
     private final EnrollmentRepository enrollmentRepository;
+    private final UserClient userClient;
+    private final ProgramClient programClient;
 
     @Override
     @Transactional
     public EnrollmentResponse enrollByEmail(String email, EnrollmentRequest request) {
         log.info("[ENROLL] 수강 신청 요청 - email: {}, programId: {}", email, request.getProgramId());
 
-        // 사용자 & 프로그램 정보 조회 (지금은 Mock)
-        UserDto user = getUserMock(email);
-        ProgramDto program = getProgramMock(request.getProgramId());
+        // 사용자, 프로그램 정보 조회 (지금은 Mock)
+        UserDto user = userClient.getUserByEmail(email);
+        ProgramDto program = programClient.getProgramById(request.getProgramId());
 
         // 가격 결정
         boolean inRegion = Objects.equals(user.getRegionId(), program.getRegionId());
@@ -68,22 +73,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .build();
     }
 
-    // 임시 데이터 나중에 삭제
-    private UserDto getUserMock(String email) {
-        return UserDto.builder()
-                .id(2L)                  // 임시 유저 ID
-                .email(email)            // 요청에서 받은 이메일 그대로 사용
-                .regionId(2L)            // 임시로 1번 지역 고정
-                .build();
-    }
-    private ProgramDto getProgramMock(Long programId) {
-        return ProgramDto.builder()
-                .id(programId)                  // 요청에서 받은 프로그램 ID 그대로 사용
-                .regionId(1L)                   // 임시로 프로그램 지역도 1번으로 고정
-                .inPrice(10000)                 // 관내 가격 (Mock)
-                .outPrice(20000)                // 관외 가격 (Mock)
-                .classStartTime(LocalTime.of(9, 0))   // 임시 시작 시간
-                .classEndTime(LocalTime.of(11, 0))    // 임시 종료 시간
-                .build();
-    }
+
+
 }
