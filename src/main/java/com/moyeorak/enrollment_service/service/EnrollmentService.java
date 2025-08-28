@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface EnrollmentService {
     EnrollmentResponse enrollByEmail(String email, EnrollmentRequest request);
+    void cancelEnrollmentByUser(Long id, Long userId);
 }

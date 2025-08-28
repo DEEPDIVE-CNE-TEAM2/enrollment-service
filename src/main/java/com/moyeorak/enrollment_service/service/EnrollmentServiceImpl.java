@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Objects;
@@ -73,6 +74,34 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .build();
     }
 
+    public void cancelEnrollmentByUser(Long id, Long userId) {
+        log.info("[CANCEL] 사용자 수강 취소 요청 - enrollmentId: {}, userId: {}", id, userId);
 
+        // 수강 신청 데이터 조회
+        Enrollment enrollment = enrollmentRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND_ENROLLMENT));
+
+        // 본인 확인
+        if (!Objects.equals(enrollment.getUserId(), userId)) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED_ENROLLMENT_CANCEL);
+        }
+
+        // 이미 취소됐는지 확인
+        if (enrollment.getStatus() == Enrollment.Status.CANCELLED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELLED);
+        }
+
+        // 취소 가능 기간 체크
+        ProgramDto program = programClient.getProgramById(enrollment.getProgramId());
+        if (program.getCancelEndDate() != null &&
+                LocalDate.now().isAfter(program.getCancelEndDate())) {
+            throw new BusinessException(ErrorCode.CANCEL_PERIOD_EXPIRED);
+        }
+
+        // 상태 변경
+        enrollment.cancel("");
+
+        enrollmentRepository.save(enrollment);
+    }
 
 }
