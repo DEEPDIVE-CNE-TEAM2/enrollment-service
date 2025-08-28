@@ -1,5 +1,7 @@
 package com.moyeorak.enrollment_service.service;
 
+import com.moyeorak.common.exception.BusinessException;
+import com.moyeorak.common.exception.ErrorCode;
 import com.moyeorak.enrollment_service.dto.EnrollmentRequest;
 import com.moyeorak.enrollment_service.dto.EnrollmentResponse;
 import com.moyeorak.enrollment_service.dto.ProgramDto;
@@ -38,7 +40,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         enrollmentRepository.findByUserIdAndProgramId(user.getId(), program.getId())
                 .ifPresent(e -> {
                     if (e.getStatus() != Enrollment.Status.CANCELLED) {
-                        throw new IllegalArgumentException("이미 신청한 프로그램입니다.");
+                        throw new BusinessException(ErrorCode.ALREADY_ENROLLED);
                     }
                 });
 
@@ -69,9 +71,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     // 임시 데이터 나중에 삭제
     private UserDto getUserMock(String email) {
         return UserDto.builder()
-                .id(1L)                  // 임시 유저 ID
+                .id(2L)                  // 임시 유저 ID
                 .email(email)            // 요청에서 받은 이메일 그대로 사용
-                .regionId(1L)            // 임시로 1번 지역 고정
+                .regionId(2L)            // 임시로 1번 지역 고정
                 .build();
     }
     private ProgramDto getProgramMock(Long programId) {
