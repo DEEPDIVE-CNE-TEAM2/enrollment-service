@@ -1,4 +1,4 @@
-package com.example.enrollment_service;
+package com.moyeorak.enrollment_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
