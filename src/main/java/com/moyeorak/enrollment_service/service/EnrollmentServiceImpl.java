@@ -34,7 +34,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional
     public EnrollmentResponse enroll(Long userId, EnrollmentRequest request) {
-        log.info("[ENROLL] 수강 신청 요청 - userId: {}, programId: {}", userId, request.getProgramId());
 
         // 사용자, 프로그램 정보 조회 (Mock or Feign)
         UserDto user = userClient.getUserById(userId);
@@ -44,13 +43,15 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         boolean inRegion = Objects.equals(user.getRegionId(), program.getRegionId());
         int paidAmount = inRegion ? program.getInPrice() : program.getOutPrice();
 
-        // 중복 신청 체크
-        enrollmentRepository.findByUserIdAndProgramId(user.getId(), program.getId())
-                .ifPresent(e -> {
-                    if (e.getStatus() != Enrollment.Status.CANCELLED) {
-                        throw new BusinessException(ErrorCode.ALREADY_ENROLLED);
-                    }
-                });
+        List<Enrollment> enrollments = enrollmentRepository.findAllByUserIdAndProgramId(user.getId(), program.getId());
+
+        boolean hasActiveEnrollment = enrollments.stream()
+                .anyMatch(e -> e.getStatus() == Enrollment.Status.ENROLLED);
+
+        if (hasActiveEnrollment) {
+            log.debug("중복 신청 시도 - userId: {}, programId: {}", userId, request.getProgramId());
+            throw new BusinessException(ErrorCode.ALREADY_ENROLLED);
+        }
 
         // 신규 신청 저장
         Enrollment enrollment = Enrollment.builder()
@@ -77,7 +78,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     public void cancelEnrollmentByUser(Long id, Long userId) {
-        log.info("[CANCEL] 사용자 수강 취소 요청 - enrollmentId: {}, userId: {}", id, userId);
 
         // 수강 신청 데이터 조회
         Enrollment enrollment = enrollmentRepository.findById(id)
@@ -85,11 +85,13 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
         // 본인 확인
         if (!Objects.equals(enrollment.getUserId(), userId)) {
+            log.debug("본인 아님 - 요청자 userId: {}, 소유자 userId: {}", userId, enrollment.getUserId());
             throw new BusinessException(ErrorCode.UNAUTHORIZED_ENROLLMENT_CANCEL);
         }
 
         // 이미 취소됐는지 확인
         if (enrollment.getStatus() == Enrollment.Status.CANCELLED) {
+            log.debug("이미 취소된 신청 - enrollmentId: {}", id);
             throw new BusinessException(ErrorCode.ALREADY_CANCELLED);
         }
 
@@ -97,6 +99,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         ProgramDto program = programClient.getProgramById(enrollment.getProgramId());
         if (program.getCancelEndDate() != null &&
                 LocalDate.now().isAfter(program.getCancelEndDate())) {
+            log.warn("취소 기간 만료 - enrollmentId: {}, 취소마감일: {}", id, program.getCancelEndDate());
             throw new BusinessException(ErrorCode.CANCEL_PERIOD_EXPIRED);
         }
 
