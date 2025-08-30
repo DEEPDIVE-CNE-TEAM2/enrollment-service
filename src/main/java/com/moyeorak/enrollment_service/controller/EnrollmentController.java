@@ -19,7 +19,6 @@ public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
 
-    // api gateway 완성되면 수정 필요
     @PostMapping
     public ResponseEntity<EnrollmentResponse> enroll(
             @RequestHeader("X-User-Id") Long userId,

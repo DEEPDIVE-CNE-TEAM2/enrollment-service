@@ -67,14 +67,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         Enrollment saved = enrollmentRepository.save(enrollment);
 
         // 응답 생성
-        return EnrollmentResponse.builder()
-                .id(saved.getId())
-                .userId(saved.getUserId())
-                .programId(saved.getProgramId())
-                .regionId(saved.getRegionId())
-                .paidAmount(saved.getPaidAmount())
-                .status(saved.getStatus().name())
-                .build();
+        return enrollmentMapper.toResponse(saved);
     }
 
     public void cancelEnrollmentByUser(Long id, Long userId) {
