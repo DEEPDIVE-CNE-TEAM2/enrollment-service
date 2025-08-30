@@ -26,9 +26,7 @@ public class EnrollmentController {
             @Valid @RequestBody EnrollmentRequest request
     ) {
         log.info("수강 신청 요청 - userId={}, programId={}", userId, request.getProgramId());
-
         EnrollmentResponse response = enrollmentService.enroll(userId, request);
-
         log.info("수강 신청 완료 - userId={}, programId={}", userId, request.getProgramId());
         return ResponseEntity.ok(response);
     }

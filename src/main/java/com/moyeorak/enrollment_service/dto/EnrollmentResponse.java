@@ -15,6 +15,7 @@ public class EnrollmentResponse {
     private Long userId;
     private Long programId;
     private Long regionId;
+    private String userEmail;
     private LocalDateTime enrolledAt;
     private String status;
     private Integer paidAmount;

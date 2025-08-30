@@ -1,11 +1,14 @@
 rootProject.name = 'enrollment-service'
 
 dependencyResolutionManagement {
-    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         mavenCentral()
         maven { url 'https://jitpack.io' }
+        maven { url 'https://repo.spring.io/release' }
+        maven { url 'https://repo.spring.io/milestone' }
     }
 }
+
 // 로컬 연결할때만
 includeBuild("../moyeorak-common")

@@ -1,5 +1,5 @@
 package com.moyeorak.enrollment_service.dto;
-// 임시
+
 import lombok.*;
 
 @Getter
