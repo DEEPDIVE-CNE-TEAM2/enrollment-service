@@ -19,16 +19,13 @@ public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
 
-    // api gateway 완성되면 수정 필요
     @PostMapping
     public ResponseEntity<EnrollmentResponse> enroll(
             @RequestHeader("X-User-Id") Long userId,
             @Valid @RequestBody EnrollmentRequest request
     ) {
         log.info("수강 신청 요청 - userId={}, programId={}", userId, request.getProgramId());
-
         EnrollmentResponse response = enrollmentService.enroll(userId, request);
-
         log.info("수강 신청 완료 - userId={}, programId={}", userId, request.getProgramId());
         return ResponseEntity.ok(response);
     }

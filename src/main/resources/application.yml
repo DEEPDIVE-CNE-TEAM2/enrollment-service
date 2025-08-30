@@ -15,3 +15,6 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
     show-sql: false
+
+auth-service:
+  url: http://localhost:8080
