@@ -11,4 +11,4 @@ dependencyResolutionManagement {
 }
 
 // 로컬 연결할때만
-includeBuild("../moyeorak-common")
+//includeBuild("../moyeorak-common")
