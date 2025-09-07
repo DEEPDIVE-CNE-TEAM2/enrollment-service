@@ -32,7 +32,7 @@ dependencies {
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	implementation 'com.github.DEEPDIVE-CNE-TEAM2:moyeorak-common:v1.0.2'
+	implementation 'com.github.DEEPDIVE-CNE-TEAM2:moyeorak-common:v1.0.4'
 	//implementation("com.moyeorak:moyeorak-common") //로컬 연결할때만
 
 	implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
