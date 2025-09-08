@@ -35,23 +35,31 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Transactional
     public EnrollmentResponse enroll(Long userId, EnrollmentRequest request) {
 
-        // 사용자, 프로그램 정보 조회 (Mock or Feign)
+        // 사용자, 프로그램 정보 조회
         UserDto user = userClient.getUserById(userId);
         ProgramDto program = programClient.getProgramById(request.getProgramId());
+        log.info("받아온 프로그램: id={}, capacity={}, title={}",
+                program.getId(), program.getCapacity(), program.getTitle());
 
-        // 가격 결정
-        boolean inRegion = Objects.equals(user.getRegionId(), program.getRegionId());
-        int paidAmount = inRegion ? program.getInPrice() : program.getOutPrice();
+                // 정원 초과 체크
+        int currentCount = enrollmentRepository.countByProgramIdAndStatus(program.getId(), Enrollment.Status.ENROLLED);
+        if (currentCount >= program.getCapacity()) {
+            log.warn("정원 초과 - programId: {}, 신청자: {}", program.getId(), userId);
+            throw new BusinessException(ErrorCode.PROGRAM_FULL);
+        }
 
+        // 중복 신청 체크
         List<Enrollment> enrollments = enrollmentRepository.findAllByUserIdAndProgramId(user.getId(), program.getId());
-
         boolean hasActiveEnrollment = enrollments.stream()
                 .anyMatch(e -> e.getStatus() == Enrollment.Status.ENROLLED);
-
         if (hasActiveEnrollment) {
             log.debug("중복 신청 시도 - userId: {}, programId: {}", userId, request.getProgramId());
             throw new BusinessException(ErrorCode.ALREADY_ENROLLED);
         }
+
+        // 가격 결정
+        boolean inRegion = Objects.equals(user.getRegionId(), program.getRegionId());
+        int paidAmount = inRegion ? program.getInPrice() : program.getOutPrice();
 
         // 신규 신청 저장
         Enrollment enrollment = Enrollment.builder()
@@ -65,8 +73,6 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                 .build();
 
         Enrollment saved = enrollmentRepository.save(enrollment);
-
-        // 응답 생성
         return enrollmentMapper.toResponse(saved);
     }
 

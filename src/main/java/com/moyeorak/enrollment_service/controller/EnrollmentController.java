@@ -3,7 +3,11 @@ package com.moyeorak.enrollment_service.controller;
 import com.moyeorak.enrollment_service.dto.EnrollmentRequest;
 import com.moyeorak.enrollment_service.dto.EnrollmentResponse;
 import com.moyeorak.enrollment_service.dto.MessageResponse;
+import com.moyeorak.enrollment_service.dto.ProgramEnrollmentCountResponse;
+import com.moyeorak.enrollment_service.entity.Enrollment;
+import com.moyeorak.enrollment_service.repository.EnrollmentRepository;
 import com.moyeorak.enrollment_service.service.EnrollmentService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +22,9 @@ import java.util.List;
 public class EnrollmentController {
 
     private final EnrollmentService enrollmentService;
+    private final EnrollmentRepository enrollmentRepository;
 
+    @Operation(summary = "수강 신청 요청")
     @PostMapping
     public ResponseEntity<EnrollmentResponse> enroll(
             @RequestHeader("X-User-Id") Long userId,
@@ -30,6 +36,7 @@ public class EnrollmentController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "수강 신청 취소")
     @DeleteMapping("/{id}")
     public ResponseEntity<MessageResponse> cancelEnrollmentByUser(
             @PathVariable Long id,
@@ -43,6 +50,7 @@ public class EnrollmentController {
         return ResponseEntity.ok(new MessageResponse("수강 신청이 취소되었습니다."));
     }
 
+    @Operation(summary = "수강 신청 내역 조회")
     @GetMapping("/me")
     public ResponseEntity<List<EnrollmentResponse>> getMyEnrollments(
             @RequestHeader("X-User-Id") Long userId
@@ -53,5 +61,17 @@ public class EnrollmentController {
 
         log.info("수강 신청 {}건 반환 - userId={}", enrollments.size(), userId);
         return ResponseEntity.ok(enrollments);
+    }
+
+    @Operation(summary = "프로그램 신청자 수")
+    @GetMapping("/count")
+    public ProgramEnrollmentCountResponse getEnrollmentCount(@RequestParam Long programId) {
+        int count = enrollmentRepository.countByProgramIdAndStatus(
+                programId, Enrollment.Status.ENROLLED
+        );
+
+        log.info("프로그램 신청 인원 수 조회 - programId={}, count={}", programId, count);
+
+        return new ProgramEnrollmentCountResponse(programId, count);
     }
 }
