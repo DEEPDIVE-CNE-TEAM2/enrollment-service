@@ -43,7 +43,7 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
                 // 정원 초과 체크
         int currentCount = enrollmentRepository.countByProgramIdAndStatus(program.getId(), Enrollment.Status.ENROLLED);
-        if (currentCount > program.getCapacity()) {
+        if (currentCount >= program.getCapacity()) {
             log.warn("정원 초과 - programId: {}, 신청자: {}", program.getId(), userId);
             throw new BusinessException(ErrorCode.PROGRAM_FULL);
         }
