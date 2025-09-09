@@ -22,7 +22,9 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/swagger-resources/**",
                                 "/v3/api-docs/**",
-                                "/webjars/**"
+                                "/webjars/**",
+				"/auth/.well-known/**",
+				"/actuator/**"
                         ).permitAll()
                         //.anyRequest().authenticated()
                         // 임시도 전체 허용 나중에 삭제
