@@ -64,7 +64,7 @@ jobs:
 
       - name: Clone infra repo
         run: |
-          git clone https://x-access-token:${{ secrets.GITHUB_PAT }}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git infra
+          git clone https://x-access-token:${{ secrets.PAT }}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git infra
           cd infra
           git checkout main
 
