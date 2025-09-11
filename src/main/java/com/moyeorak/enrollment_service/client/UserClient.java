@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "auth", url = "http://localhost:8080")
+@FeignClient(name = "auth", url = "http://auth-service.production.svc.cluster.local:8080")
 public interface UserClient {
 
     @GetMapping("/internal/users/{id}")
