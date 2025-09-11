@@ -93,24 +93,24 @@ jobs:
 
       - name: Update Kubernetes Deployment with latest image
         env:
-            IMAGE_LATEST: ${{ env.ECR_IMAGE_NAME }}:latest
-            KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_QOOPKITE }} # base64 인코딩된 kubeconfig
+          IMAGE_LATEST: ${{ env.ECR_IMAGE_NAME }}:latest
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_QOOPKITE }} # base64 인코딩된 kubeconfig
         run: |
-            set -euo pipefail
+          set -euo pipefail
 
-            # kubeconfig 파일 생성
-            echo "${KUBECONFIG_DATA}" | base64 --decode > /tmp/kubeconfig
-            export KUBECONFIG=/tmp/kubeconfig
+          # kubeconfig 파일 생성
+          echo "${KUBECONFIG_DATA}" | base64 --decode > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
 
-            echo "Updating enrollment-deployment in qoopkite namespace with latest image: ${IMAGE_LATEST}"
+          echo "Updating enrollment-deployment in qoopkite namespace with latest image: ${IMAGE_LATEST}"
 
-            # Deployment 이미지 업데이트 (컨테이너 이름 확인)
-            kubectl set image deployment/enrollment-deployment \
+          # Deployment 이미지 업데이트
+          kubectl set image deployment/enrollment-deployment \
             enrollment=${IMAGE_LATEST} \
             -n qoopkite
 
-            # Rollout 상태 확인
-            kubectl rollout status deployment/enrollment-deployment -n qoopkite
+          # Rollout 상태 확인
+          kubectl rollout status deployment/enrollment-deployment -n qoopkite
 
 
 
