@@ -1,4 +1,4 @@
-name: Build and Deploy Enrollment Service (ECR + ArgoCD)
+name: Build Enrollment image and push to ECR (push latest + sha)
 
 on:
   push:
@@ -10,13 +10,22 @@ env:
   AWS_REGION: ap-northeast-2
   ECR_REGISTRY: 004407157704.dkr.ecr.ap-northeast-2.amazonaws.com
   ECR_IMAGE_NAME: 004407157704.dkr.ecr.ap-northeast-2.amazonaws.com/enrollment-service
+  GRADLE_VERSION: 7.6
 
 jobs:
-  build-push-deploy:
+  build-push:
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Print repo files (debug)
+        run: |
+          echo "PWD=$(pwd)"
+          ls -la
+          ls -la gradle || true
+          ls -la gradle/wrapper || true
+          cat .dockerignore || true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -24,11 +33,35 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # ✅ jar 빌드 추가
-      - name: Build with Gradle
+      - name: Install pinned Gradle (non-interactive) and expose to PATH
         run: |
-          chmod +x gradlew
-          ./gradlew clean build -x test
+          set -euo pipefail
+          echo "Installing Gradle ${GRADLE_VERSION} to /opt (non-interactive)"
+          sudo apt-get update -y
+          sudo apt-get install -y curl unzip jq
+          DIST="gradle-${GRADLE_VERSION}-bin.zip"
+          URL="https://services.gradle.org/distributions/${DIST}"
+          wget -q "$URL" -O /tmp/gradle.zip
+          sudo unzip -o -q /tmp/gradle.zip -d /opt
+          sudo ln -sfn "/opt/gradle-${GRADLE_VERSION}" /opt/gradle
+          echo "/opt/gradle/bin" >> $GITHUB_PATH
+          echo "Gradle installed: $(/opt/gradle/bin/gradle -v | head -n 1)"
+
+      - name: (optional) Generate gradle wrapper if missing
+        run: |
+          set -euo pipefail
+          if [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            echo "gradle-wrapper.jar present, skipping wrapper generation"
+          else
+            /opt/gradle/bin/gradle wrapper || true
+          fi
+
+      - name: Build JAR on runner using pinned Gradle
+        run: |
+          set -euo pipefail
+          /opt/gradle/bin/gradle --no-daemon clean bootJar -x test --warning-mode all
+          ls -la build/libs || true
+          cp build/libs/*.jar build/libs/enrollment-service-0.0.1-SNAPSHOT.jar
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -42,85 +75,46 @@ jobs:
           aws ecr get-login-password --region ${{ env.AWS_REGION }} \
             | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
 
-      - name: Build and Push Docker Image
+      - name: Build Docker image and push tags
+        env:
+          SHORT_SHA: ${{ github.sha }}
         run: |
-          SHORT_SHA=${GITHUB_SHA::7}
-          SHA_TAG=${ECR_IMAGE_NAME}:${SHORT_SHA}
+          set -euo pipefail
+          SHORT=${SHORT_SHA::7}
           LATEST_TAG=${ECR_IMAGE_NAME}:latest
+          SHA_TAG=${ECR_IMAGE_NAME}:${SHORT}
 
-          echo "Building image: ${SHA_TAG}"
           docker build -t ${SHA_TAG} .
-
-          echo "Tagging as latest: ${LATEST_TAG}"
           docker tag ${SHA_TAG} ${LATEST_TAG}
-
-          echo "Pushing both tags..."
           docker push ${SHA_TAG}
           docker push ${LATEST_TAG}
-
-          echo "SHORT_SHA=${SHORT_SHA}" >> $GITHUB_ENV
-          echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
           echo "IMAGE_LATEST=${LATEST_TAG}" >> $GITHUB_ENV
+          echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
 
-      - name: Clone infra repo
-        run: |
-          git clone https://x-access-token:${{ secrets.PAT }}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git infra
-          cd infra
-          git checkout main
-
-      - name: Update infra manifest with new image
-        run: |
-          cd infra
-          NEW_IMAGE="${ECR_IMAGE_NAME}:${SHORT_SHA}"
-          echo "Updating image -> $NEW_IMAGE"
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-          yq eval -i '(.spec.template.spec.containers[] | select(.name=="enrollment") .image) = strenv(NEW_IMAGE)' k8s/enrollment/enrollment-all.yml
-          git config user.email "github-actions@github.com"
-          git config user.name "github-actions"
-          git add k8s/enrollment/enrollment-all.yml
-          git commit -m "ci: update enrollment-service image -> ${NEW_IMAGE}" || echo "No changes to commit"
-          git push origin main
-
-      - name: Trigger ArgoCD Sync
+      - name: Trigger ArgoCD sync via CLI (root app)
         env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
-          ARGOCD_APP: enrollment
+            ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+            ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+            ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
         run: |
-          sudo apt-get update -y && sudo apt-get install -y jq curl
+            set -euo pipefail
+            echo "---- ArgoCD CLI sync with root app ----"
 
-          echo "Triggering ArgoCD sync for app: ${ARGOCD_APP}"
-          curl -s -k -X POST "https://${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP}/sync" \
-            -H "Authorization: Bearer ${ARGOCD_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d '{}'
+            HOST="${ARGOCD_SERVER#https://}"
+            HOST="${HOST#http://}"
+            HOST="${HOST%/}"
+            echo "Using ArgoCD host: $HOST"
 
-          echo "Polling ArgoCD status..."
-          for i in $(seq 1 30); do
-            sleep 5
-            STATUS_JSON=$(curl -s -k -H "Authorization: Bearer ${ARGOCD_TOKEN}" \
-              "https://${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP}/status")
+            # ArgoCD CLI 다운로드
+            curl -sSL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 -o ./argocd
+            chmod +x ./argocd
+            ./argocd version --client || true
 
-            PHASE=$(echo "$STATUS_JSON" | jq -r '.status.operationState.phase // empty')
-            SYNC_STATUS=$(echo "$STATUS_JSON" | jq -r '.status.sync.status // empty')
-            CUR_STATUS=${PHASE:-$SYNC_STATUS}
-            echo "[$i/30] ArgoCD status: $CUR_STATUS"
+            # 로그인
+            ./argocd login "$HOST" --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" --insecure
 
-            if [ "$CUR_STATUS" = "Succeeded" ] || [ "$CUR_STATUS" = "Synced" ]; then
-              echo "ArgoCD sync succeeded."
-              exit 0
-            fi
-            if [ "$CUR_STATUS" = "Failed" ] || [ "$CUR_STATUS" = "Error" ]; then
-              echo "ArgoCD sync failed."
-              echo "$STATUS_JSON" | jq .
-              exit 1
-            fi
-          done
-
-          echo "ArgoCD sync timed out after 150s"
-          echo "$STATUS_JSON" | jq .
-          exit 1
+            # root 앱 기준 sync
+            ./argocd app sync moyeorak-root --prune --force --grpc-web
 
       - name: Cleanup local images
         run: docker image prune -af || true
