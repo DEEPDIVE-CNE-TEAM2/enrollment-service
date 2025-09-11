@@ -90,6 +90,18 @@ jobs:
           echo "IMAGE_LATEST=${LATEST_TAG}" >> $GITHUB_ENV
           echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
 
+      - name: Update Kubernetes Deployment with latest image
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+        run: |
+          set -euo pipefail
+          echo "Updating enrollment-deployment with latest image"
+          kubectl set image deployment/enrollment-deployment \
+            enrollment=004407157704.dkr.ecr.ap-northeast-2.amazonaws.com/enrollment-service:latest \
+            -n qoopkite
+          kubectl rollout status deployment/enrollment-deployment -n qoopkite
+
+
       - name: Trigger ArgoCD sync via CLI (root app)
         env:
             ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
