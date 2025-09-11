@@ -90,27 +90,28 @@ jobs:
           echo "IMAGE_LATEST=${LATEST_TAG}" >> $GITHUB_ENV
           echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
 
-          
+
       - name: Update Kubernetes Deployment with latest image
         env:
-          IMAGE_LATEST: ${{ env.ECR_IMAGE_NAME }}:latest
-          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_QOOPKITE }} # base64 인코딩된 kubeconfig
+            IMAGE_LATEST: ${{ env.ECR_IMAGE_NAME }}:latest
+            KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_QOOPKITE }} # base64 인코딩된 kubeconfig
         run: |
-          set -euo pipefail
-          
-          # kubeconfig 파일 생성
-          echo "${KUBECONFIG_DATA}" | base64 --decode > /tmp/kubeconfig
-          export KUBECONFIG=/tmp/kubeconfig
+            set -euo pipefail
 
-          echo "Updating enrollment-deployment in qoopkite namespace with latest image: ${IMAGE_LATEST}"
+            # kubeconfig 파일 생성
+            echo "${KUBECONFIG_DATA}" | base64 --decode > /tmp/kubeconfig
+            export KUBECONFIG=/tmp/kubeconfig
 
-          # Deployment 이미지 업데이트
-          kubectl set image deployment/enrollment-deployment \
+            echo "Updating enrollment-deployment in qoopkite namespace with latest image: ${IMAGE_LATEST}"
+
+            # Deployment 이미지 업데이트 (컨테이너 이름 확인)
+            kubectl set image deployment/enrollment-deployment \
             enrollment=${IMAGE_LATEST} \
             -n qoopkite
 
-          # Rollout 상태 확인
-          kubectl rollout status deployment/enrollment-deployment -n qoopkite
+            # Rollout 상태 확인
+            kubectl rollout status deployment/enrollment-deployment -n qoopkite
+
 
 
       - name: Trigger ArgoCD sync via CLI (root app)
