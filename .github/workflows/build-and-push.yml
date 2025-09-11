@@ -90,15 +90,26 @@ jobs:
           echo "IMAGE_LATEST=${LATEST_TAG}" >> $GITHUB_ENV
           echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
 
+          
       - name: Update Kubernetes Deployment with latest image
         env:
-          KUBECONFIG: ${{ secrets.KUBECONFIG }}
+          IMAGE_LATEST: ${{ env.ECR_IMAGE_NAME }}:latest
+          KUBECONFIG_DATA: ${{ secrets.KUBECONFIG_QOOPKITE }} # base64 인코딩된 kubeconfig
         run: |
           set -euo pipefail
-          echo "Updating enrollment-deployment with latest image"
+          
+          # kubeconfig 파일 생성
+          echo "${KUBECONFIG_DATA}" | base64 --decode > /tmp/kubeconfig
+          export KUBECONFIG=/tmp/kubeconfig
+
+          echo "Updating enrollment-deployment in qoopkite namespace with latest image: ${IMAGE_LATEST}"
+
+          # Deployment 이미지 업데이트
           kubectl set image deployment/enrollment-deployment \
-            enrollment=004407157704.dkr.ecr.ap-northeast-2.amazonaws.com/enrollment-service:latest \
+            enrollment=${IMAGE_LATEST} \
             -n qoopkite
+
+          # Rollout 상태 확인
           kubectl rollout status deployment/enrollment-deployment -n qoopkite
 
 
