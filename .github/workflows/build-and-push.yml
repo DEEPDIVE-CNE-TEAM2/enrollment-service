@@ -63,6 +63,7 @@ jobs:
           ls -la build/libs || true
           cp build/libs/*.jar build/libs/enrollment-service-0.0.1-SNAPSHOT.jar
 
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -91,63 +92,70 @@ jobs:
           echo "IMAGE_LATEST=${LATEST_TAG}" >> $GITHUB_ENV
           echo "IMAGE_SHA=${SHA_TAG}" >> $GITHUB_ENV
 
+
       - name: Update manifest in infra and push
         env:
-          IMAGE_SHA: ${{ env.IMAGE_SHA }}
-          CLASSIC_TOKEN: ${{ secrets.CLASSIC_TOKEN }}
+            IMAGE_SHA: ${{ env.IMAGE_SHA }}
+            INFRA_PAT: ${{ secrets.CLASSIC_TOKEN }}
         run: |
-          set -euo pipefail
-          echo "=== Start update infra manifest for enrollment-service ==="
+            set -euo pipefail
+            echo "=== Start update infra manifest for enrollment-service ==="
 
-          git clone https://x-access-token:${CLASSIC_TOKEN}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git
-          cd moyeorak-infra
+            git clone https://x-access-token:${INFRA_PAT}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git
+            cd moyeorak-infra
 
-          MANIFEST_PATH="k8s/enrollment/enrollment-all.yml"
-          if [ ! -f "${MANIFEST_PATH}" ]; then
+            MANIFEST_PATH="k8s/enrollment/enrollment-all.yml"
+            if [ ! -f "${MANIFEST_PATH}" ]; then
             echo "ERROR: ${MANIFEST_PATH} not found"
             exit 1
-          fi
+            fi
 
-          if ! command -v yq >/dev/null 2>&1; then
+            if ! command -v yq >/dev/null 2>&1; then
             sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
             sudo chmod +x /usr/local/bin/yq
-          fi
+            fi
 
-          yq eval -i '(.spec.template.spec.containers[] | select(.name=="enrollment-service") .image) = strenv(IMAGE_SHA)' "${MANIFEST_PATH}"
+            yq eval -i '(.spec.template.spec.containers[] | select(.name=="enrollment-service") .image) = strenv(IMAGE_SHA)' "${MANIFEST_PATH}"
 
-          git config user.email "github-actions@github.com"
-          git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git config user.name "github-actions"
 
-          if git diff --quiet -- "${MANIFEST_PATH}"; then
+            if git diff --quiet -- "${MANIFEST_PATH}"; then
             echo "No change in ${MANIFEST_PATH}"
             exit 0
-          fi
+            fi
 
-          git add "${MANIFEST_PATH}"
-          git commit -m "ci: update enrollment-service image -> ${IMAGE_SHA}"
+            git add "${MANIFEST_PATH}"
+            git commit -m "ci: update enrollment-service image -> ${IMAGE_SHA}"
 
-          git push https://x-access-token:${CLASSIC_TOKEN}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git main
+            git push https://x-access-token:${INFRA_PAT}@github.com/DEEPDIVE-CNE-TEAM2/moyeorak-infra.git main
+
+
 
       - name: Trigger ArgoCD sync via CLI (root app)
         env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
-          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+            ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+            ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+            ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
         run: |
-          set -euo pipefail
-          echo "---- ArgoCD CLI sync with root app ----"
+            set -euo pipefail
+            echo "---- ArgoCD CLI sync with root app ----"
 
-          HOST="${ARGOCD_SERVER#https://}"
-          HOST="${HOST#http://}"
-          HOST="${HOST%/}"
-          echo "Using ArgoCD host: $HOST"
+            HOST="${ARGOCD_SERVER#https://}"
+            HOST="${HOST#http://}"
+            HOST="${HOST%/}"
+            echo "Using ArgoCD host: $HOST"
 
-          curl -sSL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 -o ./argocd
-          chmod +x ./argocd
-          ./argocd version --client || true
+            # ArgoCD CLI 다운로드
+            curl -sSL https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 -o ./argocd
+            chmod +x ./argocd
+            ./argocd version --client || true
 
-          ./argocd login "$HOST" --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" --insecure
-          ./argocd app sync moyeorak-root --prune --force --grpc-web
+            # 로그인
+            ./argocd login "$HOST" --username "$ARGOCD_USERNAME" --password "$ARGOCD_PASSWORD" --insecure
+
+            # root 앱 기준 sync
+            ./argocd app sync moyeorak-root --prune --force --grpc-web
 
       - name: Cleanup local images
         run: docker image prune -af || true
